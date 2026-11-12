@@ -109,3 +109,23 @@ test('unsaved target choices survive a progress update', async () => {
   await loading;
   assert.equal(ui.nodes.get('target-options').children, options);
 });
+
+test('table columns follow saved targets and only fresh arrivals get a success badge', async () => {
+  const ui = app();
+  await ui.respond(0, fixture({
+    targets: ['nixos-unstable', 'master'],
+    prs: [{number: 123, title: '<script>untrusted</script>', state: 'merged',
+      branches: {'master': {status: 'present', checked_at: 1000, error: 'Offline'},
+        'nixos-unstable': {status: 'present', checked_at: 1000, error: null}}}]
+  }));
+  const row = ui.nodes.get('pr-list').children[0];
+  assert.equal(row.tagName, 'tr');
+  assert.equal(row.children.length, 5);
+  const headers = ui.nodes.get('target-head').children;
+  assert.equal(headers[2].textContent, 'nixos-unstable');
+  assert.equal(headers[3].textContent, 'master');
+  assert.equal(row.children[2].children[0].className, 'arrival');
+  assert.match(row.children[2].children[0].textContent, /Arrived/);
+  assert.equal(row.children[3].children[0].className, 'stale');
+  assert.match(row.children[3].children[0].textContent, /stale/);
+});

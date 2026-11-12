@@ -4,44 +4,31 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Nixpkgs · PR watchlist</title>
+  <title>Nixpkgs / watchlist</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
-  <header class="topbar"><div class="topbar-inner">
-    <a class="brand" href="/" aria-label="Nixpkgs tracker home"><span class="brand-icon" aria-hidden="true">❄</span> nixpkgs <span class="brand-divider">/</span> <span class="brand-sub">pr tracker</span></a>
-    <span class="local-label"><span class="dot"></span> On this machine</span>
-  </div></header>
   <main>
-    <section class="intro" aria-labelledby="page-title">
-      <div><p class="eyebrow">A LITTLE LESS REFRESHING</p><h1 id="page-title">Your Nixpkgs watchlist<span class="accent">.</span></h1><p class="subtitle">Star a pull request. Follow it from merge to your chosen branches.</p></div>
-      <button id="refresh-all" class="button secondary" disabled><span aria-hidden="true">↻</span> Check all now</button>
-    </section>
+    <header class="top"><h1>nixpkgs / watchlist</h1><button id="refresh-all" disabled>Check now</button></header>
     <div id="notice" class="notice" role="status" hidden></div>
     <div id="error" class="notice error" role="alert" hidden></div>
-    <div class="workspace">
-      <div class="watchlist-column">
-        <section class="add-panel" aria-label="Add a pull request">
-          <form id="add-form"><label for="pr-input">Something worth following?</label>
-            <div class="add-row"><input id="pr-input" name="pr" type="text" placeholder="PR number or GitHub URL" autocomplete="off" spellcheck="false" required maxlength="2048"><button class="button primary" type="submit" id="add-button"><span aria-hidden="true">☆</span> Add to watchlist</button></div>
-            <p class="input-hint">NixOS/nixpkgs pull requests only. Your favourites stay on this machine.</p>
-          </form>
-        </section>
-        <div class="list-heading"><h2>Starred pull requests <span id="pr-count" class="count">0</span></h2><span id="list-status" class="muted" aria-live="polite">Loading…</span></div>
-        <section id="pr-list" aria-label="Starred pull requests" aria-busy="true"></section>
-        <section id="empty-state" class="empty-state" hidden><span class="empty-star" aria-hidden="true">☆</span><h2>A home for the PRs you’re waiting on</h2><p>Add your first pull request above.<br>We’ll keep its latest status here, even when you’re offline.</p></section>
-      </div>
-      <aside>
-        <section class="panel targets-panel"><div class="panel-heading"><h2>Target branches</h2><span class="tiny-tag">MULTI-SELECT</span></div><p class="muted panel-description">Where are you waiting for changes to land?</p>
-          <form id="targets-form"><fieldset id="target-options"><legend class="sr-only">Branches to track</legend></fieldset><button class="button secondary full" type="submit" id="save-targets" disabled>Save targets</button></form><p class="input-hint">Applies to every starred PR. Changes are checked on the next refresh.</p>
-        </section>
-        <section class="panel activity-panel"><h2>Quietly keeping up</h2><dl><div><dt>Background checks</dt><dd id="schedule">—</dd></div><div><dt>Last refresh finished</dt><dd id="last-refresh">Not yet</dd></div><div><dt>GitHub access</dt><dd id="token-status">—</dd></div></dl><p id="refresh-progress" class="progress" role="status"></p><button id="reload" class="text-button" type="button">Reload saved results <span aria-hidden="true">↗</span></button><p class="input-hint">Opening this page doesn’t make GitHub requests.</p></section>
-      </aside>
+    <section class="top add-section" aria-label="Add a pull request">
+      <form id="add-form"><label class="sr-only" for="pr-input">NixOS/nixpkgs PR number or URL</label><input id="pr-input" name="pr" type="text" placeholder="Add PR number or URL" autocomplete="off" spellcheck="false" required maxlength="2048"><button id="add-button" type="submit">Add</button></form>
+      <div class="list-summary"><span id="pr-count">0</span> starred <span aria-hidden="true">·</span> <span id="list-status" role="status">Loading…</span></div>
+    </section>
+    <form id="targets-form" class="targets-form"><fieldset id="target-options"><legend class="sr-only">Branches to track</legend></fieldset><button type="submit" id="save-targets" disabled>Save targets</button></form>
+    <p id="refresh-progress" class="progress" role="status"></p>
+    <div class="table-scroll" role="region" aria-label="PR watchlist" tabindex="0">
+      <table id="watchlist-table" hidden><caption class="sr-only">Starred pull requests and arrival in selected branches</caption><thead><tr id="target-head"></tr></thead><tbody id="pr-list" aria-busy="true"></tbody></table>
     </div>
-    <footer><span>Built for the wait between “merged” and “available”.</span><a href="https://github.com/NixOS/nixpkgs" target="_blank" rel="noreferrer">NixOS/nixpkgs ↗</a></footer>
+    <section id="empty-state" class="empty-state" hidden><p>No starred pull requests yet.</p><small>Add a NixOS/nixpkgs PR above to start following it.</small></section>
+    <footer>
+      <div class="top"><span>Background checks: <span id="schedule">—</span>. Saved on this machine.</span><button id="reload" type="button" class="text-button">Reload saved results</button></div>
+      <details><summary>Check details</summary><p>Last refresh finished: <span id="last-refresh">Not yet</span> · <span id="token-status">—</span></p><p>Opening this page reads saved results. Saving targets applies to the next manual or background check.</p></details>
+    </footer>
   </main>
-  <noscript>This dashboard needs JavaScript to display your saved PRs. Enable JavaScript for localhost.</noscript>
+  <noscript>Enable JavaScript for localhost to display saved PRs.</noscript>
 </body>
 </html>

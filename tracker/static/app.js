@@ -61,56 +61,64 @@ function renderTargets() {
   $('save-targets').disabled = true;
 }
 
-function card(pr) {
-  const article = element('article', 'pr-card');
-  const top = element('div', 'pr-top');
+function tableRow(pr) {
+  const row = element('tr');
+  const identity = element('td', 'pr-identity');
   const star = element('button', 'star-button', '★');
   star.type = 'button';
   star.title = `Remove #${pr.number} from watchlist`;
   star.setAttribute('aria-label', star.title);
   star.disabled = actionPending;
   star.addEventListener('click', () => act('/api/remove', {number: pr.number}, `Removed #${pr.number} from your watchlist.`));
-  const main = element('div', 'pr-main');
-  const link = element('a', 'pr-title', pr.title || 'Waiting for the first check');
+  const link = element('a', 'pr-title');
   link.href = `https://github.com/NixOS/nixpkgs/pull/${pr.number}`;
   link.target = '_blank';
   link.rel = 'noreferrer';
-  const meta = element('div', 'meta');
+  link.append(element('span', 'pr-number', `#${pr.number}`), element('span', '', pr.title || 'Waiting for the first check'));
+  const summary = element('div', 'pr-summary');
+  summary.append(star, link);
+  identity.append(summary);
+  if (pr.error) identity.append(element('p', 'row-error', pr.error));
   const labels = {open: 'Open', draft: 'Draft', merged: 'Merged', closed: 'Closed', unknown: 'Not checked'};
-  meta.append(element('span', `badge ${pr.state}`, labels[pr.state] || 'Unknown'));
-  if (pr.base) meta.append(element('span', 'base', `→ ${pr.base}`));
-  main.append(element('span', 'pr-number', `NixOS/nixpkgs #${pr.number}`), link, meta);
-  top.append(star, main);
-  const branches = element('div', 'branches');
-  for (const [name, result] of Object.entries(pr.branches)) {
+  const status = element('td', 'pr-status', labels[pr.state] || 'Unknown');
+  if (pr.base) status.title = `Base: ${pr.base}`;
+  row.append(identity, status);
+  for (const target of state.targets) {
+    const result = pr.branches[target] || {status: 'unknown'};
     const stale = !!result.error || !!pr.error;
-    const statusLabels = {present: 'Arrived', absent: 'Not yet', unknown: 'Not checked', waiting: pr.state === 'closed' ? 'Not merged' : 'Awaiting merge'};
-    const symbols = {present: '✓', absent: '◷', unknown: '·', waiting: '·'};
-    const branch = element('div', `branch ${stale ? 'error' : result.status}`);
-    const label = statusLabels[result.status] || 'Unknown';
-    branch.title = result.error || `${label}${result.checked_at ? ' · Checked ' + dateLabel(result.checked_at) : ''}`;
-    branch.append(element('span', '', stale ? '!' : symbols[result.status]), element('span', '', name), element('span', 'branch-label', stale ? `${label} · stale` : label));
-    branches.append(branch);
+    const labels = {present: 'Arrived', absent: 'Waiting', unknown: 'Not checked', waiting: pr.state === 'closed' ? 'Not merged' : 'Awaiting merge'};
+    const label = labels[result.status] || 'Unknown';
+    const cell = element('td');
+    const indicator = element('span', stale ? 'stale' : result.status === 'present' ? 'arrival' : 'pending',
+      stale ? `${label} · stale` : result.status === 'present' ? `✓ ${label}` : label);
+    indicator.title = result.error || `${target}${result.checked_at ? ' · Checked ' + dateLabel(result.checked_at) : ''}`;
+    cell.append(indicator);
+    row.append(cell);
   }
-  const footer = element('div', 'card-footer');
-  const timestamp = element('span', '', `Last successful check: ${dateLabel(pr.last_success)}`);
-  if (pr.last_attempt) timestamp.title = `Last attempt: ${dateLabel(pr.last_attempt)}`;
-  const check = element('button', 'text-button', 'Check now ↻');
+  const actions = element('td', 'row-actions');
+  const check = element('button', 'text-button', 'Check now');
   check.type = 'button';
+  check.setAttribute('aria-label', `Check PR #${pr.number} now`);
   check.disabled = state.running || actionPending || state.cooldown_until * 1000 > Date.now();
   check.addEventListener('click', () => act('/api/refresh', {number: pr.number}, `Checking #${pr.number}…`));
-  footer.append(timestamp, check);
-  article.append(top, branches);
-  if (pr.error) article.append(element('p', 'card-error', pr.error));
-  article.append(footer);
-  return article;
+  actions.append(check, element('small', 'last-check', dateLabel(pr.last_success)));
+  actions.title = `Last successful check: ${dateLabel(pr.last_success)}. Last attempt: ${dateLabel(pr.last_attempt)}`;
+  row.append(actions);
+  return row;
 }
 
 function render() {
   renderTargets();
   $('pr-count').textContent = state.prs.length;
   $('empty-state').hidden = state.prs.length > 0;
-  $('pr-list').replaceChildren(...state.prs.map(card));
+  const headings = ['Pull request', 'Status', ...state.targets, 'Last check'];
+  $('target-head').replaceChildren(...headings.map((text) => {
+    const heading = element('th', '', text);
+    heading.setAttribute('scope', 'col');
+    return heading;
+  }));
+  $('watchlist-table').hidden = state.prs.length === 0;
+  $('pr-list').replaceChildren(...state.prs.map(tableRow));
   $('pr-list').setAttribute('aria-busy', String(state.running));
   $('list-status').textContent = state.running ? 'Checking GitHub…' : 'Saved on this machine';
   $('schedule').textContent = state.schedule;
@@ -118,7 +126,7 @@ function render() {
   $('token-status').textContent = state.token_configured ? 'Token configured' : 'Public API · no token';
   const cooldown = state.cooldown_until * 1000 > Date.now();
   $('refresh-all').disabled = !state.prs.length || state.running || cooldown || actionPending;
-  $('refresh-all').textContent = state.running ? 'Checking…' : '↻ Check all now';
+  $('refresh-all').textContent = state.running ? 'Checking…' : 'Check now';
   $('refresh-progress').textContent = cooldown ? `Paused until ${dateLabel(state.cooldown_until)}. Saved results are still available.`
     : state.running ? `Checking ${state.last_refresh?.checked || 0} of ${state.last_refresh?.total || state.prs.length} PRs…`
     : state.last_refresh?.error || '';
