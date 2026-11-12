@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.state/
+.venv/
+result
+result-*
+reference/
+checkpoints/
