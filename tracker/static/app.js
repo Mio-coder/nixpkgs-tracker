@@ -6,6 +6,9 @@ let targetsDirty = false;
 let pollTimer = null;
 let loading = false;
 let actionPending = false;
+let loadPromise = null;
+let reloadQueued = false;
+let stateRevision = 0;
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -121,17 +124,38 @@ function render() {
     : state.last_refresh?.error || '';
 }
 
-async function load() {
-  if (loading) return;
+async function load(force = false) {
+  if (loading) {
+    reloadQueued = reloadQueued || force;
+    return loadPromise;
+  }
   loading = true;
-  clearTimeout(pollTimer);
+  loadPromise = (async () => {
+    do {
+      reloadQueued = false;
+      const revision = stateRevision;
+      clearTimeout(pollTimer);
+      try {
+        const freshState = await api('/api/state');
+        // A completed mutation invalidates reads started before it.
+        if (revision !== stateRevision) continue;
+        state = freshState;
+        render();
+        if (state.running) {
+          pollTimer = setTimeout(load, 1500);
+        } else {
+          const remaining = state.cooldown_until * 1000 - Date.now();
+          if (remaining > 0) pollTimer = setTimeout(load, Math.min(remaining + 50, 2147483647));
+        }
+      } catch (error) {
+        if (revision !== stateRevision) continue;
+        showMessage('error', `Cannot load saved results. Is the local tracker running? ${error.message}`);
+        $('list-status').textContent = 'Connection unavailable';
+      }
+    } while (reloadQueued);
+  })();
   try {
-    state = await api('/api/state');
-    render();
-    if (state.running) pollTimer = setTimeout(load, 1500);
-  } catch (error) {
-    showMessage('error', `Cannot load saved results. Is the local tracker running? ${error.message}`);
-    $('list-status').textContent = 'Connection unavailable';
+    await loadPromise;
   } finally {
     loading = false;
   }
@@ -146,6 +170,7 @@ async function act(path, data, message) {
   if (state) render();
   try {
     const response = await api(path, data);
+    stateRevision += 1;
     if (path === '/api/targets') targetsDirty = false;
     if (path === '/api/prs') $('pr-input').value = '';
     const busy = response.status === 'busy' || response.refresh?.status === 'busy';
@@ -155,7 +180,7 @@ async function act(path, data, message) {
   } finally {
     actionPending = false;
     $('add-button').disabled = false;
-    await load();
+    await load(true);
     if (targetsDirty) $('save-targets').disabled = selectedTargets().length === 0;
   }
 }
