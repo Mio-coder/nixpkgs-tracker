@@ -33,10 +33,10 @@ python3 -m tracker refresh --state-dir .state --token-file /absolute/path/to/tok
 
 ## NixOS installation
 
-Add this project as an input in your system flake (replace the path):
+Add this project as an input in your system flake:
 
 ```nix
-inputs.pr-tracker.url = "path:/home/you/code/nixpkgs_pr_tracker";
+inputs.pr-tracker.url = "";
 inputs.pr-tracker.inputs.nixpkgs.follows = "nixpkgs";
 ```
 
